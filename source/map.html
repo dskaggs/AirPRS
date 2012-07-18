@@ -1,0 +1,106 @@
+<!DOCTYPE html >
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<title>AirPRS - Google Map</title>
+		
+		<link href="main.css" rel="stylesheet" type="text/css"/>
+		<script type="text/javascript" src="lib/date.format.js"></script>
+		<script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false"></script>
+		<script type="text/javascript">
+			
+		  function initialize(){
+			
+			markers = new Object();
+			infoWindow = new google.maps.InfoWindow();
+			
+		  	var myLatlng = new google.maps.LatLng(35.625, -86.9847);
+		  	var myOptions = {
+		  		zoom: 8,
+		  		center: myLatlng,
+		  		mapTypeId: google.maps.MapTypeId.ROADMAP
+		  	}
+
+		  	map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+		  	
+			var Exposed = {};
+			
+			Exposed.processReport = processReport;			
+			window.childSandboxBridge = Exposed;
+			
+			window.parentSandboxBridge.onMapFrameLoad();
+		  	
+		  };
+		  
+		  function processReport( report ){
+		  	window.parentSandboxBridge.trace("Beginning processing of report: " + report.rawPacket)
+			//First determine if this report can be mapped
+			if ( report.latitude != 0 && report.longitude != 0 && report.call != "")
+			{
+				window.parentSandboxBridge.trace("Report is mappable");
+				//Next determine if we have a marker for this callsign stored already
+				if ( report.call in markers)
+				{
+					//Update the existing marker
+					window.parentSandboxBridge.trace("Report exists in the cache.")
+					var newLatLon = new google.maps.LatLng( report.latitude, report.longitude );
+					
+					markers[ report.call ].setPosition( newLatLon );
+					
+					google.maps.event.addListener(markers[ report.call ], 'click', function() {
+				      infoWindow.setOptions({content: report.call + "<br>" + Math.round( report.latitude * 1000 )/1000 + report.parallel + " / " + Math.round( report.longitude * 1000)/1000 + report.meridian});
+					  infoWindow.open(map,markers[ report.call ]);
+				    });	
+					
+				}else
+				{
+					window.parentSandboxBridge.trace("Report does NOT exist in the cache.");
+					//Add a new marker
+					var latlon = new google.maps.LatLng( report.latitude, report.longitude );
+					
+					markers[ report.call ] = new google.maps.Marker({
+			        position: latlon, 
+			        map: map,
+			        title: report.call
+					});
+					
+					google.maps.event.addListener(markers[ report.call ], 'click', function() {
+				     infoWindow.setOptions({content: report.call + "<br>" + Math.round( report.latitude * 1000 )/1000 + report.parallel + " / " + Math.round( report.longitude * 1000)/1000 + report.meridian});
+					  infoWindow.open(map,markers[ report.call ]);
+				    });	
+				}
+				
+			}else
+			{
+				window.parentSandboxBridge.trace("Report is NOT mappable");
+			}
+			
+		  }
+		  
+			
+			function setCenter(lat, lng, address) {
+				var center = map.getCenter();
+				if (center.lat() == lat && center.lng() == lng)
+					return;
+				var point = new GLatLng(lat, lng);
+		
+				map.setCenter(point);
+				if (address) {
+		        	var marker = new GMarker(point);
+		
+		        	map.addOverlay(marker);
+		
+		        	marker.openInfoWindowHtml(address);
+		
+		        }		
+		
+			}
+			
+		</script>
+	</head>
+
+
+	<body onload="initialize()">
+		<div id="map_canvas"></div>
+	</body>
+</html>
